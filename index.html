@@ -220,6 +220,25 @@ button:focus-visible, .btn:focus-within, select:focus-visible, input:focus-visib
 .busy { margin: 0; font: 0.8rem var(--font-mono); color: var(--muted); }
 .confirming { background: var(--led) !important; border-color: var(--led) !important; color: var(--on-accent) !important; }
 
+/* Phones held upright: the game only fits sideways, so cover everything with a rotate prompt. */
+.rotate { display: none; }
+@media (orientation: portrait) and (pointer: coarse) and (max-width: 600px) {
+  .rotate {
+    display: grid; position: fixed; inset: 0; z-index: 40; place-items: center; text-align: center;
+    background: var(--bg); color: var(--ink);
+    padding: max(24px, env(safe-area-inset-top, 0px)) max(24px, env(safe-area-inset-right, 0px)) max(24px, env(safe-area-inset-bottom, 0px)) max(24px, env(safe-area-inset-left, 0px));
+  }
+  .app, #overlay.overlay, .sheet, .scrim { visibility: hidden; }
+}
+.rotate-inner { display: grid; gap: 14px; justify-items: center; max-width: 280px; }
+.rotate svg { width: 132px; height: 132px; color: var(--ink); }
+.rotate .phone { transform-origin: 66px 66px; animation: turn 2.4s ease-in-out infinite; }
+@keyframes turn { 0%, 25% { transform: rotate(0deg); } 55%, 85% { transform: rotate(-90deg); } 100% { transform: rotate(0deg); } }
+.rotate h2 { margin: 0; font-size: 1.35rem; text-wrap: balance; }
+.rotate p { margin: 0; color: var(--muted); font-size: 0.95rem; }
+.rotate .kicker { font: 500 0.68rem var(--font-mono); letter-spacing: 0.14em; text-transform: uppercase; }
+@media (prefers-reduced-motion: reduce) { .rotate .phone { animation: none; transform: rotate(-90deg); } }
+
 @media (prefers-reduced-motion: reduce) { .led, .switch, .switch::after { transition: none; } }
 </style>
 
@@ -244,7 +263,6 @@ button:focus-visible, .btn:focus-within, select:focus-visible, input:focus-visib
         <ul class="how">
           <li><b>Tap</b><span>the screen to click buttons and menus</span></li>
           <li><b>Type</b><span>commands on the keyboard, then Return</span></li>
-          <li><b>Turn</b><span>your phone sideways for a bigger screen</span></li>
         </ul>
         <div class="row">
           <button class="primary" id="playBtn" disabled>Loading…</button>
@@ -266,6 +284,21 @@ button:focus-visible, .btn:focus-within, select:focus-visible, input:focus-visib
     </div>
     <div class="kbd" id="kbd" role="tabpanel" aria-labelledby="tabKeys"></div>
   </section>
+</div>
+
+<div class="rotate" id="rotate" role="alert" aria-live="polite">
+  <div class="rotate-inner">
+    <svg viewBox="0 0 132 132" aria-hidden="true">
+      <g class="phone">
+        <rect x="42" y="18" width="48" height="96" rx="9" fill="none" stroke="currentColor" stroke-width="4"/>
+        <rect x="49" y="30" width="34" height="62" rx="2" fill="currentColor" opacity="0.18"/>
+        <circle cx="66" cy="103" r="3.5" fill="currentColor"/>
+      </g>
+    </svg>
+    <p class="kicker">Radical Castle</p>
+    <h2>Turn your phone sideways</h2>
+    <p>The game plays in landscape, where the Mac screen is big enough to read.</p>
+  </div>
 </div>
 
 <div class="scrim" id="scrim" hidden></div>
@@ -2748,7 +2781,16 @@ const PAYLOAD = { rom: "TR7u4QBAACoAdWAAAFZgAAdQYAAARGAAABYAAXb4Tvor/AAAAAAAAAAA
   async function keepAwake() {
     try { if (navigator.wakeLock && document.visibilityState === "visible") wakeLock = await navigator.wakeLock.request("screen"); } catch (e) { wakeLock = null; }
   }
+  const upright = matchMedia("(orientation: portrait) and (pointer: coarse) and (max-width: 600px)");
+  async function goLandscape() {
+    if (!matchMedia("(pointer: coarse)").matches) return;
+    try {
+      if (!document.fullscreenElement && document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen({ navigationUI: "hide" });
+      if (screen.orientation && screen.orientation.lock) await screen.orientation.lock("landscape");
+    } catch (e) { /* not supported here (iPhone, embedded viewers): the rotate prompt covers it */ }
+  }
   function start() {
+    goLandscape();
     running = true; paused = false;
     $("overlay").hidden = true;
     ensureAudio();
@@ -3125,6 +3167,7 @@ const PAYLOAD = { rom: "TR7u4QBAACoAdWAAAFZgAAdQYAAARGAAABYAAXb4Tvor/AAAAAAAAAAA
   if (window.ResizeObserver) new ResizeObserver(() => fitScreen()).observe(app);
   addEventListener("resize", fitScreen);
   if (shortLandscape.addEventListener) shortLandscape.addEventListener("change", () => setTimeout(fitScreen, 50));
+  if (upright.addEventListener) upright.addEventListener("change", () => { lastTime = performance.now(); debt = 0; setTimeout(fitScreen, 50); });
 
   // ---------------- main loop ----------------
   let lastTime = 0, debt = 0, statT = 0;
@@ -3137,6 +3180,7 @@ const PAYLOAD = { rom: "TR7u4QBAACoAdWAAAFZgAAdQYAAARGAAABYAAXb4Tvor/AAAAAAAAAAA
     requestAnimationFrame(loop);
     if (!running || !mac) return;
     const dt = Math.min(100, t - lastTime); lastTime = t;
+    if (upright.matches) { $("status").textContent = "Paused (phone is upright)"; return; }
     if (!paused) {
       const start = performance.now();
       if (turbo) {

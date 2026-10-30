@@ -230,6 +230,23 @@ button:focus-visible, .btn:focus-within, select:focus-visible, input:focus-visib
 .busy { margin: 0; font: 0.8rem var(--font-mono); color: var(--muted); }
 .confirming { background: var(--led) !important; border-color: var(--led) !important; color: var(--on-accent) !important; }
 
+/* Landscape + trackpad: a tall mouse button on the left for the left thumb, the pad on the right for the right thumb. */
+.mbtn-side { display: none; }
+@media (orientation: landscape) and (max-height: 600px) {
+  .app[data-deck="mouse"] {
+    grid-template-columns: clamp(64px, 9vw, 92px) minmax(0, 1fr) clamp(200px, 30vw, 320px);
+    grid-template-areas: "bar bar bar" "btn stage deck";
+  }
+  .app[data-deck="mouse"] .mbtn-side {
+    display: grid; place-items: center; grid-area: btn; align-self: stretch; height: auto;
+    border-radius: 14px; padding: 0; font-size: 0.7rem;
+  }
+  .app[data-deck="mouse"] .mbtn-side span { writing-mode: vertical-rl; transform: rotate(180deg); letter-spacing: 0.2em; }
+  .app[data-deck="mouse"] .mouse-panel { grid-template-rows: minmax(0, 1fr); }
+  .app[data-deck="mouse"] .mouse-panel .mbtn { display: none; }
+  .app[data-deck="mouse"] .pad p { font-size: 0.78rem; }
+}
+
 /* Phones held upright: the game only fits sideways, so cover everything with a rotate prompt. */
 .rotate { display: none; }
 @media (orientation: portrait) and (pointer: coarse) and (max-width: 600px) {
@@ -262,6 +279,8 @@ button:focus-visible, .btn:focus-within, select:focus-visible, input:focus-visib
     </button>
   </header>
 
+  <button class="mbtn mbtn-side" id="mbtnL" aria-label="Mouse button"><span>Click</span></button>
+
   <main class="stage" id="stage">
     <div class="bezel" id="bezel">
       <canvas id="screen" width="512" height="342" tabindex="0" aria-label="Macintosh Plus screen running Radical Castle"></canvas>
@@ -289,7 +308,7 @@ button:focus-visible, .btn:focus-within, select:focus-visible, input:focus-visib
       <button role="tab" id="tabKeys" aria-selected="true" aria-controls="kbd">Keyboard</button>
     </div>
     <div class="mouse-panel" id="mousePanel" role="tabpanel" aria-labelledby="tabMouse" hidden>
-      <div class="pad" id="pad" aria-label="Trackpad"><p>Drag to move the pointer<br>Tap to click · Tap, then hold and drag to drag</p></div>
+      <div class="pad" id="pad" aria-label="Trackpad"><p>Drag to move the pointer<br>Tap to click, or hold Click with your other thumb</p></div>
       <button class="mbtn" id="mbtn" aria-label="Mouse button">Mouse button</button>
     </div>
     <div class="kbd" id="kbd" role="tabpanel" aria-labelledby="tabKeys"></div>
@@ -2877,6 +2896,7 @@ const PAYLOAD = { rom: "TR7u4QBAACoAdWAAAFZgAAdQYAAARGAAABYAAXb4Tvor/AAAAAAAAAAA
     buttonDown = down;
     if (mac) mac.setButton(down);
     $("mbtn").classList.toggle("pressed", down);
+    $("mbtnL").classList.toggle("pressed", down);
   }
   let clickTimer = 0;
   function click() {
@@ -2927,19 +2947,23 @@ const PAYLOAD = { rom: "TR7u4QBAACoAdWAAAFZgAAdQYAAARGAAABYAAXb4Tvor/AAAAAAAAAAA
   pad.addEventListener("pointerup", padEnd);
   pad.addEventListener("pointercancel", padEnd);
 
-  // Physical-style mouse button: hold it with one thumb while dragging on the pad with the other.
+  // Physical-style mouse buttons: one under the pad, and a tall one left of the screen in landscape, so one thumb
+  // holds the button while the other drags on the pad. Both drive the same Mac mouse button.
   const mbtn = $("mbtn");
-  let mbId = null;
-  mbtn.addEventListener("pointerdown", (e) => {
-    e.preventDefault(); mbId = e.pointerId;
-    try { mbtn.setPointerCapture(e.pointerId); } catch (_) {}
-    clearTimeout(clickTimer); setButton(true); buzz();
-  });
-  const mbEnd = (e) => { if (e.pointerId !== mbId) return; mbId = null; setButton(false); };
-  mbtn.addEventListener("pointerup", mbEnd);
-  mbtn.addEventListener("pointercancel", mbEnd);
-  mbtn.addEventListener("keydown", (e) => { if ((e.key === " " || e.key === "Enter") && !e.repeat) { e.preventDefault(); setButton(true); } });
-  mbtn.addEventListener("keyup", (e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); setButton(false); } });
+  const heldButtons = new Set();
+  for (const el of [mbtn, $("mbtnL")]) {
+    let id = null;
+    el.addEventListener("pointerdown", (e) => {
+      e.preventDefault(); id = e.pointerId;
+      try { el.setPointerCapture(e.pointerId); } catch (_) {}
+      clearTimeout(clickTimer); heldButtons.add(el); setButton(true); buzz();
+    });
+    const end = (e) => { if (e.pointerId !== id) return; id = null; heldButtons.delete(el); if (!heldButtons.size) setButton(false); };
+    el.addEventListener("pointerup", end);
+    el.addEventListener("pointercancel", end);
+    el.addEventListener("keydown", (e) => { if ((e.key === " " || e.key === "Enter") && !e.repeat) { e.preventDefault(); setButton(true); } });
+    el.addEventListener("keyup", (e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); setButton(false); } });
+  }
 
   // Direct touch on the display: the pointer jumps to your finger; touch = press, lift = release.
   function toMac(e) {
@@ -3169,7 +3193,7 @@ const PAYLOAD = { rom: "TR7u4QBAACoAdWAAAFZgAAdQYAAARGAAABYAAXb4Tvor/AAAAAAAAAAA
     if (prefs.sharp) {
       const dpr = window.devicePixelRatio || 1;
       const dev = s * dpr, n = Math.floor(dev);
-      if (n >= 1 && n / dev >= 0.72) s = n / dpr;
+      if (n >= 1 && n / dev >= 0.9) s = n / dpr;   // snap to whole device pixels only when it costs under 10% of the size
     }
     canvas.style.width = Math.floor(512 * s) + "px";
     canvas.style.height = Math.floor(342 * s) + "px";

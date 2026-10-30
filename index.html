@@ -247,6 +247,32 @@ button:focus-visible, .btn:focus-within, select:focus-visible, input:focus-visib
   .app[data-deck="mouse"] .pad p { font-size: 0.78rem; }
 }
 
+/* Landscape, roomier: no title bar (Menu moves into the controls column), slimmer side columns, thinner bezel. */
+.deck-top { display: flex; gap: 6px; min-width: 0; }
+.deck-top .seg { flex: 1 1 auto; min-width: 0; }
+.deck-menu { display: none; }
+@media (orientation: landscape) and (max-height: 600px) {
+  .app { padding-block: 6px; gap: 8px; }
+  .app .bar { display: none; }
+  .app, .app[data-deck="keys"] {
+    grid-template-columns: minmax(0, 1fr) clamp(230px, 35vw, 360px);
+    grid-template-rows: minmax(0, 1fr);
+    grid-template-areas: "stage deck";
+  }
+  .app[data-deck="mouse"] {
+    grid-template-columns: clamp(54px, 7vw, 80px) minmax(0, 1fr) clamp(170px, 24vw, 280px);
+    grid-template-rows: minmax(0, 1fr);
+    grid-template-areas: "btn stage deck";
+  }
+  .bezel { padding: 4px; border-radius: 7px; }
+  .deck-menu {
+    display: inline-grid; place-items: center; flex: none; width: 42px; padding: 0;
+    border: 1px solid var(--line); background: var(--panel); border-radius: 8px; cursor: pointer; color: var(--ink);
+  }
+  .deck-menu svg { width: 16px; height: 16px; }
+  .app[data-deck="mouse"] .seg button { padding-inline: 4px; font-size: 0.82rem; }
+}
+
 /* Phones held upright: the game only fits sideways, so cover everything with a rotate prompt. */
 .rotate { display: none; }
 @media (orientation: portrait) and (pointer: coarse) and (max-width: 600px) {
@@ -303,9 +329,14 @@ button:focus-visible, .btn:focus-within, select:focus-visible, input:focus-visib
   </main>
 
   <section class="deck" id="deck" aria-label="Controls">
-    <div class="seg" role="tablist" aria-label="Input">
-      <button role="tab" id="tabMouse" aria-selected="false" aria-controls="mousePanel">Trackpad</button>
-      <button role="tab" id="tabKeys" aria-selected="true" aria-controls="kbd">Keyboard</button>
+    <div class="deck-top">
+      <div class="seg" role="tablist" aria-label="Input">
+        <button role="tab" id="tabMouse" aria-selected="false" aria-controls="mousePanel">Trackpad</button>
+        <button role="tab" id="tabKeys" aria-selected="true" aria-controls="kbd">Keyboard</button>
+      </div>
+      <button class="deck-menu" id="menuBtn2" aria-label="Menu" aria-haspopup="dialog" aria-controls="sheet">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/></svg>
+      </button>
     </div>
     <div class="mouse-panel" id="mousePanel" role="tabpanel" aria-labelledby="tabMouse" hidden>
       <div class="pad" id="pad" aria-label="Trackpad"><p>Drag to move the pointer<br>Tap to click, or hold Click with your other thumb</p></div>
@@ -3171,6 +3202,7 @@ const PAYLOAD = { rom: "TR7u4QBAACoAdWAAAFZgAAdQYAAARGAAABYAAXb4Tvor/AAAAAAAAAAA
     if (sheetReturn && sheetReturn.focus) sheetReturn.focus({ preventScroll: true });
   }
   $("menuBtn").addEventListener("click", openSheet);
+  $("menuBtn2").addEventListener("click", openSheet);
   $("sheetClose").addEventListener("click", closeSheet);
   $("scrim").addEventListener("click", closeSheet);
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("sheet").hidden) closeSheet(); });
@@ -3183,7 +3215,8 @@ const PAYLOAD = { rom: "TR7u4QBAACoAdWAAAFZgAAdQYAAARGAAABYAAXb4Tvor/AAAAAAAAAAA
   // ---------------- display sizing ----------------
   const shortLandscape = matchMedia("(orientation: landscape) and (max-height: 600px)");
   function fitScreen() {
-    const BP = 16;
+    const pad = parseFloat(getComputedStyle($("bezel")).paddingLeft) || 0;
+    const BP = 2 * pad;
     const W = stage.clientWidth - BP;
     let H;
     if (shortLandscape.matches) H = stage.clientHeight - BP;

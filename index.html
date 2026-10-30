@@ -273,6 +273,58 @@ button:focus-visible, .btn:focus-within, select:focus-visible, input:focus-visib
   .app[data-deck="mouse"] .seg button { padding-inline: 4px; font-size: 0.82rem; }
 }
 
+/* ---- Full screen on phones held sideways: the Mac screen fills the height on black, controls float on top ---- */
+.hud { display: none; }
+.app[data-immersive] {
+  position: fixed; inset: 0; z-index: 1; max-width: none; margin: 0; padding: 0; display: block;
+  background: #000; --hud: rgba(26, 28, 31, 0.46); --hud-edge: rgba(255, 255, 255, 0.26); --hud-ink: rgba(255, 255, 255, 0.78);
+}
+.app[data-immersive] .bar, .app[data-immersive] .deck .deck-top { display: none; }
+.app[data-immersive] .stage { position: absolute; inset: 0; display: grid; place-items: center; }
+.app[data-immersive] .bezel { padding: 0; border-radius: 0; background: transparent; box-shadow: none; transition: transform 0.22s ease; }
+.app[data-immersive] .deck { position: absolute; inset: 0; display: block; pointer-events: none; }
+.app[data-immersive] .deck .mouse-panel {
+  position: absolute; display: block; pointer-events: auto;
+  right: calc(env(safe-area-inset-right, 0px) + 10px); top: 60px; bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
+  width: var(--padw, 130px);
+}
+.app[data-immersive] .deck .mouse-panel .mbtn { display: none; }
+.app[data-immersive] .deck .pad { height: 100%; min-height: 0; background: var(--hud); border: 1px solid var(--hud-edge); box-shadow: none; padding: 8px; }
+.app[data-immersive] .deck .pad.active { background: rgba(26, 28, 31, 0.6); }
+.app[data-immersive] .deck .pad p { color: var(--hud-ink); font-size: 0.72rem; }
+.app[data-immersive] .mbtn-side {
+  display: grid; place-items: center; position: absolute; z-index: 3;
+  left: calc(env(safe-area-inset-left, 0px) + 10px); top: 10px; bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
+  width: var(--clickw, 72px); height: auto; border-radius: 14px; padding: 0;
+  background: var(--hud); border: 1px solid var(--hud-edge); color: var(--hud-ink); box-shadow: none; font-size: 0.7rem;
+}
+.app[data-immersive] .mbtn-side span { writing-mode: vertical-rl; transform: rotate(180deg); letter-spacing: 0.2em; }
+.app[data-immersive] .mbtn-side.pressed { background: rgba(111, 191, 166, 0.55); transform: none; }
+.app[data-immersive] .hud {
+  display: flex; gap: 8px; position: absolute; z-index: 5;
+  top: 10px; right: calc(env(safe-area-inset-right, 0px) + 10px);
+}
+.app[data-immersive] .hud-btn {
+  width: 42px; height: 42px; display: grid; place-items: center; padding: 0; cursor: pointer;
+  border-radius: 12px; background: var(--hud); border: 1px solid var(--hud-edge); color: var(--hud-ink);
+}
+.app[data-immersive] .hud-btn svg { width: 20px; height: 20px; }
+.app[data-immersive] .hud-btn[aria-pressed="true"] { background: rgba(111, 191, 166, 0.55); color: #fff; }
+/* keyboard open: it covers the bottom of the display; the trackpad and Click step aside */
+.app[data-immersive][data-deck="keys"] .mbtn-side { display: none; }
+.app[data-immersive] .deck .kbd {
+  position: absolute; pointer-events: auto; z-index: 4; align-self: auto;
+  left: calc(env(safe-area-inset-left, 0px) + 8px); right: calc(env(safe-area-inset-right, 0px) + 8px);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 6px);
+  height: min(50vh, 206px); padding: 6px; gap: 5px; border-radius: 12px;
+  grid-template-rows: repeat(4, minmax(30px, 1fr));
+  background: rgba(20, 21, 23, 0.6); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+}
+.app[data-immersive] .deck .kbd .key { background: rgba(248, 245, 236, 0.92); color: #26282b; border-color: rgba(0, 0, 0, 0.35); }
+.app[data-immersive] .deck .kbd .key.mod, .app[data-immersive] .deck .kbd .key.fn { background: rgba(220, 214, 198, 0.92); }
+.app[data-immersive] .deck .kbd .key.latched, .app[data-immersive] .deck .kbd .key.locked { background: var(--accent); color: var(--on-accent); }
+@media (prefers-reduced-motion: reduce) { .app[data-immersive] .bezel { transition: none; } }
+
 /* Phones held upright: the game only fits sideways, so cover everything with a rotate prompt. */
 .rotate { display: none; }
 @media (orientation: portrait) and (pointer: coarse) and (max-width: 600px) {
@@ -306,6 +358,14 @@ button:focus-visible, .btn:focus-within, select:focus-visible, input:focus-visib
   </header>
 
   <button class="mbtn mbtn-side" id="mbtnL" aria-label="Mouse button"><span>Click</span></button>
+  <div class="hud" id="hud">
+    <button class="hud-btn" id="kbdToggle" aria-label="Show keyboard" aria-pressed="false">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="6" width="19" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6 9.5h1M9 9.5h1M12 9.5h1M15 9.5h1M18 9.5h0M6 12.5h1M9 12.5h1M12 12.5h1M15 12.5h1M8 15h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    </button>
+    <button class="hud-btn" id="hudMenu" aria-label="Menu" aria-haspopup="dialog" aria-controls="sheet">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/></svg>
+    </button>
+  </div>
 
   <main class="stage" id="stage">
     <div class="bezel" id="bezel">
@@ -3164,7 +3224,10 @@ const PAYLOAD = { rom: "TR7u4QBAACoAdWAAAFZgAAdQYAAARGAAABYAAXb4Tvor/AAAAAAAAAAA
     $("tabKeys").setAttribute("aria-selected", String(which === "keys"));
     $("mousePanel").hidden = which !== "mouse";
     kbd.hidden = which !== "keys";
+    const kt = $("kbdToggle");
+    if (kt) { kt.setAttribute("aria-pressed", String(which === "keys")); kt.setAttribute("aria-label", which === "keys" ? "Hide keyboard" : "Show keyboard"); }
     fitScreen();
+    requestAnimationFrame(fitScreen);
   }
   $("tabMouse").addEventListener("click", () => setDeck("mouse"));
   $("tabKeys").addEventListener("click", () => setDeck("keys"));
@@ -3203,6 +3266,22 @@ const PAYLOAD = { rom: "TR7u4QBAACoAdWAAAFZgAAdQYAAARGAAABYAAXb4Tvor/AAAAAAAAAAA
   }
   $("menuBtn").addEventListener("click", openSheet);
   $("menuBtn2").addEventListener("click", openSheet);
+  // The floating buttons act when the finger lifts (like the keys), not on the browser's click, which
+  // touch browsers sometimes swallow right after a trackpad gesture. Click still works for mouse and keyboard users.
+  function onTap(el, fn) {
+    let id = null, lastTouchFire = 0;
+    el.addEventListener("pointerdown", (e) => { if (e.pointerType !== "mouse") { id = e.pointerId; e.preventDefault(); } });
+    el.addEventListener("pointerup", (e) => {
+      if (e.pointerId !== id) return;
+      id = null;
+      const r = el.getBoundingClientRect();
+      if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) { lastTouchFire = performance.now(); buzz(); fn(); }
+    });
+    el.addEventListener("pointercancel", () => { id = null; });
+    el.addEventListener("click", () => { if (performance.now() - lastTouchFire > 600) fn(); });
+  }
+  onTap($("hudMenu"), openSheet);
+  onTap($("kbdToggle"), () => setDeck(app.dataset.deck === "keys" ? "mouse" : "keys"));
   $("sheetClose").addEventListener("click", closeSheet);
   $("scrim").addEventListener("click", closeSheet);
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("sheet").hidden) closeSheet(); });
@@ -3214,23 +3293,59 @@ const PAYLOAD = { rom: "TR7u4QBAACoAdWAAAFZgAAdQYAAARGAAABYAAXb4Tvor/AAAAAAAAAAA
 
   // ---------------- display sizing ----------------
   const shortLandscape = matchMedia("(orientation: landscape) and (max-height: 600px)");
+  // Full-screen layout for phones held sideways (see the [data-immersive] styles).
+  const immersiveMQ = matchMedia("(orientation: landscape) and (max-height: 600px) and (pointer: coarse)");
+  const insetProbe = document.createElement("div");
+  insetProbe.style.cssText = "position:fixed;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)";
+  document.body.appendChild(insetProbe);
+  function insets() {
+    const cs = getComputedStyle(insetProbe);
+    return { t: parseFloat(cs.paddingTop) || 0, r: parseFloat(cs.paddingRight) || 0, b: parseFloat(cs.paddingBottom) || 0, l: parseFloat(cs.paddingLeft) || 0 };
+  }
+  function snap(s) {
+    if (!prefs.sharp) return s;
+    const dpr = window.devicePixelRatio || 1;
+    const dev = s * dpr, n = Math.floor(dev);
+    return n >= 1 && n / dev >= 0.9 ? n / dpr : s;   // whole device pixels only when it costs under 10% of the size
+  }
   function fitScreen() {
-    const pad = parseFloat(getComputedStyle($("bezel")).paddingLeft) || 0;
+    const imm = immersiveMQ.matches;
+    if (imm) app.dataset.immersive = ""; else delete app.dataset.immersive;
+    const bezel = $("bezel");
+    if (imm) {
+      const ins = insets();
+      const vw = window.innerWidth, vh = window.innerHeight;
+      const W = vw - ins.l - ins.r, H = vh - ins.b;
+      const s = snap(Math.min(W / 512, H / 342));
+      const sw = Math.floor(512 * s), sh = Math.floor(342 * s);
+      canvas.style.width = sw + "px"; canvas.style.height = sh + "px";
+      // controls sit in the black side strips when there is room, otherwise overlap the screen edge
+      const strip = (vw - sw) / 2;
+      app.style.setProperty("--clickw", Math.round(Math.max(60, Math.min(96, strip - ins.l - 18))) + "px");
+      app.style.setProperty("--padw", Math.round(Math.max(120, Math.min(220, strip - ins.r - 18))) + "px");
+      // keyboard open: slide the screen up so its bottom (where you type) stays just above the keys
+      let shift = 0;
+      if (app.dataset.deck === "keys" && !kbd.hidden) {
+        const kb = kbd.getBoundingClientRect();
+        const top = (vh - sh) / 2, bottom = top + sh;
+        shift = Math.min(0, kb.top - 6 - bottom);
+      }
+      bezel.style.transform = shift ? `translateY(${Math.round(shift)}px)` : "";
+      return;
+    }
+    bezel.style.transform = "";
+    const pad = parseFloat(getComputedStyle(bezel).paddingLeft) || 0;
     const BP = 2 * pad;
     const W = stage.clientWidth - BP;
     let H;
     if (shortLandscape.matches) H = stage.clientHeight - BP;
     else H = app.clientHeight * (app.dataset.deck === "keys" ? 0.42 : 0.5) - BP;
     if (W <= 0 || H <= 0) return;
-    let s = Math.min(W / 512, H / 342);
-    if (prefs.sharp) {
-      const dpr = window.devicePixelRatio || 1;
-      const dev = s * dpr, n = Math.floor(dev);
-      if (n >= 1 && n / dev >= 0.9) s = n / dpr;   // snap to whole device pixels only when it costs under 10% of the size
-    }
+    const s = snap(Math.min(W / 512, H / 342));
     canvas.style.width = Math.floor(512 * s) + "px";
     canvas.style.height = Math.floor(342 * s) + "px";
   }
+  if (immersiveMQ.addEventListener) immersiveMQ.addEventListener("change", () => setTimeout(fitScreen, 50));
   if (window.ResizeObserver) new ResizeObserver(() => fitScreen()).observe(app);
   addEventListener("resize", fitScreen);
   if (shortLandscape.addEventListener) shortLandscape.addEventListener("change", () => setTimeout(fitScreen, 50));
